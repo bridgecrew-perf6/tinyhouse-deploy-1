@@ -1,19 +1,21 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.bookingResolvers = void 0;
 const mongodb_1 = require("mongodb");
 const api_1 = require("../../../lib/api");
 const utils_1 = require("../../../lib/utils");
 const resolveBookingsIndex = (bookingsIndex, checkInDate, checkOutDate) => {
     let dateCursor = new Date(checkInDate);
-    let checkOut = new Date(checkOutDate);
+    const checkOut = new Date(checkOutDate);
     const newBookingsIndex = Object.assign({}, bookingsIndex);
     while (dateCursor <= checkOut) {
         const y = dateCursor.getUTCFullYear();
@@ -37,10 +39,10 @@ const resolveBookingsIndex = (bookingsIndex, checkInDate, checkOutDate) => {
 };
 exports.bookingResolvers = {
     Mutation: {
-        createBooking: (_root, { input }, { db, req }) => __awaiter(this, void 0, void 0, function* () {
+        createBooking: (_root, { input }, { db, req }) => __awaiter(void 0, void 0, void 0, function* () {
             try {
                 const { id, source, checkIn, checkOut } = input;
-                let viewer = yield utils_1.authorize(db, req);
+                const viewer = yield (0, utils_1.authorizeMutation)(db, req);
                 if (!viewer) {
                     throw new Error("viewer cannot be found");
                 }
@@ -59,8 +61,7 @@ exports.bookingResolvers = {
                     throw new Error("check out date can't be before check in date");
                 }
                 const bookingsIndex = resolveBookingsIndex(listing.bookingsIndex, checkIn, checkOut);
-                const totalPrice = listing.price *
-                    ((checkOutDate.getTime() - checkInDate.getTime()) / 86400000 + 1);
+                const totalPrice = listing.price * ((checkOutDate.getTime() - checkInDate.getTime()) / 86400000 + 1);
                 const host = yield db.users.findOne({
                     _id: listing.host
                 });
@@ -68,27 +69,18 @@ exports.bookingResolvers = {
                     throw new Error("the host either can't be found or is not connected with Stripe");
                 }
                 yield api_1.Stripe.charge(totalPrice, source, host.walletId);
-                const insertRes = yield db.bookings.insertOne({
+                const insertRes = {
                     _id: new mongodb_1.ObjectId(),
                     listing: listing._id,
                     tenant: viewer._id,
                     checkIn,
                     checkOut
-                });
-                const insertedBooking = insertRes.ops[0];
-                yield db.users.updateOne({
-                    _id: host._id
-                }, {
-                    $inc: { income: totalPrice }
-                });
-                yield db.users.updateOne({
-                    _id: viewer._id
-                }, {
-                    $push: { bookings: insertedBooking._id }
-                });
-                yield db.listings.updateOne({
-                    _id: listing._id
-                }, {
+                };
+                yield db.bookings.insertOne(insertRes);
+                const insertedBooking = insertRes;
+                yield db.users.updateOne({ _id: host._id }, { $inc: { income: totalPrice } });
+                yield db.users.updateOne({ _id: viewer._id }, { $push: { bookings: insertedBooking._id } });
+                yield db.listings.updateOne({ _id: listing._id }, {
                     $set: { bookingsIndex },
                     $push: { bookings: insertedBooking._id }
                 });
