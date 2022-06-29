@@ -1,9 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeDefs = void 0;
 const apollo_server_express_1 = require("apollo-server-express");
-exports.typeDefs = (0, apollo_server_express_1.gql) `
-  
+exports.typeDefs = apollo_server_express_1.gql `
   type Booking {
     id: ID!
     listing: Listing!
@@ -11,7 +9,7 @@ exports.typeDefs = (0, apollo_server_express_1.gql) `
     checkIn: String!
     checkOut: String!
   }
-  
+
   type Bookings {
     total: Int!
     result: [Booking!]!
@@ -49,7 +47,7 @@ exports.typeDefs = (0, apollo_server_express_1.gql) `
     total: Int!
     result: [Listing!]!
   }
-  
+
   type User {
     id: ID!
     name: String!
@@ -60,7 +58,7 @@ exports.typeDefs = (0, apollo_server_express_1.gql) `
     bookings(limit: Int!, page: Int!): Bookings
     listings(limit: Int!, page: Int!): Listings!
   }
-  
+
   type Viewer {
     id: ID
     token: String
@@ -68,7 +66,7 @@ exports.typeDefs = (0, apollo_server_express_1.gql) `
     hasWallet: Boolean
     didRequest: Boolean!
   }
-  
+
   input LogInInput {
     code: String!
   }
@@ -99,13 +97,13 @@ exports.typeDefs = (0, apollo_server_express_1.gql) `
     user(id: ID!): User!
     listing(id: ID!): Listing!
     listings(
-      location: String 
-      filter: ListingsFilter! 
-      limit: Int! 
+      location: String
+      filter: ListingsFilter!
+      limit: Int!
       page: Int!
     ): Listings!
   }
-  
+
   type Mutation {
     logIn(input: LogInInput): Viewer!
     logOut: Viewer!
